@@ -1,0 +1,10 @@
+{
+    "cmake.configureOnOpen": true,
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+    "files.associations": {
+        "chrono": "cpp",
+        "memory": "cpp",
+        "istream": "cpp",
+        "*.tcc": "cpp"
+    }
+}
