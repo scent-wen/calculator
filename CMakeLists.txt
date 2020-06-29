@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.0)
 project(Calculator)
-
-add_executable(calculator calculator.cc Node.cc rational.cc)
+add_executable(calculator main.cc Node.cc rational.cc calculator.cc)
+add_executable(cac main.cc Node.cc rational.cc calculator.cc)
+add_executable(test_case test_case.cc Node.cc rational.cc calculator.cc)

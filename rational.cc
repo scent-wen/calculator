@@ -1,6 +1,6 @@
 #include "rational.h"
 #include <cassert>
-
+using namespace std;
 // RationalValue::RationalValue(const Rational<int>& r)
 // {
 //     int n = r.getNumerator();
@@ -95,4 +95,17 @@ RationalValue operator/(const RationalValue& lhs, const RationalValue& rhs)
             return RationalValue(static_cast<int>(result), result - static_cast<int>(result));
         }
     }
+}
+
+std::ostream& operator<<(std::ostream& stream, const RationalValue& v)
+{
+    if(v.hasFraction())
+    {
+        stream << (v.getValue());
+    }
+    else
+    {
+        stream << v.getInteger();
+    }
+    return stream;
 }

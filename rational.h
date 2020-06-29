@@ -1,50 +1,5 @@
 #pragma once
-
-// template<typename T>
-// class Rational{ //用于计算
-// public:
-//     Rational(const T& numerator = 0, 
-//         const T& denominator = 1);
-
-//     friend Rational operator*(const Rational& lhs, const Rational& rhs)
-//     {
-//         return Rational<T>(lhs.numerator*rhs.numerator, lhs.denominator * rhs.denominator);
-//     }
-
-//     friend Rational operator/(const Rational& lhs, const Rational& rhs)
-//     {
-//         return Rational<T>(lhs.numerator*rhs.denominator, lhs.denominator * rhs.numerator);
-//     }
-
-//     friend Rational operator+(const Rational& lhs, const Rational& rhs)
-//     {
-//         T t_numerator = lhs.numerator*rhs.denominator +  lhs.denominator * rhs.numerator;
-//         T t_denominator = lhs.denominator * rhs.denominator;
-//         return Rational<T>(t_numerator, t_denominator);
-//     }
-
-//     friend Rational operator-(const Rational& lhs, const Rational& rhs)
-//     {
-//         rhs.numerator = -rhs.numerator;
-//         rhs.denominator = -rhs.denominator;
-//         return lhs + rhs;
-//     }
-
-//     T getNumerator() { return numerator; }
-//     T getDenominator() { return denominator; }
-
-// public:
-//     T numerator;
-//     T denominator;
-// };
-
-// template<typename T>
-// Rational<T>::Rational(const T& numerator, const T& denominator)
-// {
-//     this->numerator = numerator;
-//     this->denominator = denominator;
-// }
-
+#include <iostream>
 
 //用于最后的值
 class RationalValue{ 
@@ -54,7 +9,7 @@ public:
     {}
 
     RationalValue(int i, double fraction)
-    :integer(i), fraction(false), has_fraction(true)
+    :integer(i), fraction(fraction), has_fraction(true)
     {}
 
     bool hasFraction() const
@@ -76,7 +31,7 @@ public:
     friend RationalValue operator-(const RationalValue& lhs, const RationalValue& rhs);
     friend RationalValue operator*(const RationalValue& lhs, const RationalValue& rhs);
     friend RationalValue operator/(const RationalValue& lhs, const RationalValue& rhs);
-
+    // friend std::ostream& operator<<(const ostream& stream, const RationalValue& v);
 private:
     int integer = 0;
     double fraction = 0.0;
@@ -87,4 +42,6 @@ RationalValue operator+(const RationalValue& lhs, const RationalValue& rhs);
 RationalValue operator-(const RationalValue& lhs, const RationalValue& rhs); 
 RationalValue operator*(const RationalValue& lhs, const RationalValue& rhs);
 RationalValue operator/(const RationalValue& lhs, const RationalValue& rhs);
+std::ostream& operator<<(std::ostream& stream, const RationalValue& v);
+
 

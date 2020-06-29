@@ -1,280 +1,158 @@
-#include "matetemplate_test.h"
-#include "Node.h"
-#include "rational.h"
+#include "calculator.h"
+#include <stack>
+#include <stdexcept>
 
-#include <iostream>
-#include <cassert>
-#include <sstream>
-#include <chrono>
 using namespace std;
-
-typedef shared_ptr<Type::Node> NodePtr;
-
-void testNode()
+void Calculator::trim(string& str)
 {
-    // shared_ptr<double> p = shared_ptr<int>
-    NodePtr a = std::make_shared<Type::NumberNode>(10);
-    NodePtr b(static_cast<Type::Node*>(new Type::NumberNode(20)));
-    NodePtr c  = std::make_shared<Type::NumberNode>(30);
-    NodePtr d = std::make_shared<Type::NumberNode>(0);
-
-    NodePtr add = std::make_shared<Type::BinaryNode>(a, b, Type::CalculateOp::Plus);
-    NodePtr minus = std::make_shared<Type::BinaryNode>(a, b, Type::CalculateOp::Minus);
-    NodePtr devide = std::make_shared<Type::BinaryNode>(b, a, Type::CalculateOp::Devide);
-    NodePtr multi = std::make_shared<Type::BinaryNode>(b, a, Type::CalculateOp::Multi);
-    NodePtr devide_zero = std::make_shared<Type::BinaryNode>(b, d, Type::CalculateOp::Devide);
-
-    NodePtr sum = std::make_shared<Type::BinaryNode>(add, a, Type::CalculateOp::Plus);
-
-    assert(add->calculate().getInteger() == 30);
-    assert(minus->calculate().getInteger() == -10);
-    assert(multi->calculate().getInteger() == 200);
-    assert(devide->calculate().getInteger() == 2);
-
-    assert(sum->calculate().getInteger() == 40);
-
-    // try
-    // {
-    //     devide_zero->calculate();
-    // }
-    // catch(const std::invalid_argument& e)
-    // {
-    //     std::cerr << e.what() << '\n';
-    // }
-    
-    
-}
-
-string& trim(string& str)
-{
-    if(str.empty()) return str;
+    if(str.empty()) return ;
 
     str.erase(0, str.find_first_not_of(" "));
     str.erase(str.find_last_not_of(" ") + 1);
-    return str;
 }
 
-void pre_process(string& str)
+void Calculator::pre_process(string& str)
 {
     string result;
     for(char c : str)
     {
         if(c == ' ') continue;
-        if(c == '-') 
-        {
-            result += "+-";
-        }
-        else
-        {
-            result += c;
-        }
+        else result.push_back(c);
     }
     str = result;
 }
 
-size_t symbol_find(const string& exp, const string& symbols)
+static NodePtr split_exp(size_t pos, const string& exp,  string& left, string& right)
 {
-    for(auto symbol : symbols)
+    // pos = exp.find_first_of("+-*/", pos);
+    char op_char = exp[pos];
+    NodePtr root;
+    switch (op_char)
     {
-        auto pos = exp.find_last_of(symbol);
-        if(pos != string::npos)
-            return pos;
+        case '+':
+            root =make_shared<Type::BinaryNode>(Type::CalculateOp::Plus);
+            break;
+        case '-':
+            root = make_shared<Type::BinaryNode>(Type::CalculateOp::Minus);
+            break;
+        case '*':
+            root = make_shared<Type::BinaryNode>(Type::CalculateOp::Multi);
+            break;
+        case '/':
+            root = make_shared<Type::BinaryNode>(Type::CalculateOp::Devide);
+            break;
+        default:
+            throw out_of_range(string("symbol is not support '") + string(op_char, 1) + string("'"));
     }
-    return string::npos;
+    
+    left = exp.substr(0, pos);
+    right = exp.substr(pos + 1);
+    return root;
 }
 
-// NodePtr build_tree_with_brackets(string& exp)
-// {
-//     auto pos = symbol_find(exp, "+/*");
-//     if(pos != string::npos)
-//     {
-//         NodePtr root = nullptr;
-//         if(exp[pos] == '+')
-//         {
-//             root = make_shared<Type::BinaryNode>(Type::CalculateOp::Plus);
-//         }
-//         else if(exp[pos] == '*')
-//         {
-//             root = make_shared<Type::BinaryNode>(Type::CalculateOp::Multi);
-//         }
-//         else if(exp[pos] == '/')
-//         {
-//             root = make_shared<Type::BinaryNode>(Type::CalculateOp::Devide);
-//         }
-//         string left_str = exp.substr(0, pos);
-//         string right_str = exp.substr(pos + 1);
-//         root->setLeft(build_tree(left_str));
-//         root->setRight(build_tree(right_str));
-
-//         return root;
-//     }
-
-//     // exp = std::replace(exp.begin(), exp.end(), '(', '');
-//     exp = trim(exp);
-//     if(exp.empty())
-//     {
-//         throw invalid_argument("warong expression");
-//     }
-
-//     pos = exp.find(".");
-//     if(pos != string::npos)
-//     {
-//         double value = atof(exp.c_str());
-//         RationalValue rv(static_cast<int>(value), value - static_cast<int>(value));
-//         return make_shared<Type::NumberNode>(rv);
-//     }
-//     else
-//     {
-//         int value = atoi(exp.c_str());
-//         RationalValue rv(value);
-//         return  make_shared<Type::NumberNode>(value);
-//     }
-// }
-
-NodePtr build_tree(string& str)
+void Calculator::erase_brackets(string& exp)
 {
+    if(exp[0] != '(' || exp[exp.size() -1] != ')') return;
+    stack<int> s;
+    for(size_t i = 0; i < exp.size() - 1; i++)
+    {
+        char ch = exp[i];
+        if(ch == '(') s.push(i);
+        if(ch == ')') s.pop();
+        if(s.empty()) return;
+    }
+    exp.erase(exp.size() -1, 1);
+    exp.erase(0, 1);
+    erase_brackets(exp);
+    return;
+}
 
-    auto pos = str.find_last_of("+-");
+static size_t search_symbol(string& exp, const string& symbol)
+{
+    if(exp.find_first_of(symbol) == string::npos) return string::npos;
+
+    auto pos = exp.find_first_of("(");
+    if(pos == string::npos)
+    {
+        return exp.find_last_of(symbol);
+    }
+
+    Calculator::erase_brackets(exp);
+    stack<char> s;
+    auto result = string::npos;
+    for(size_t i = 0; i < exp.size(); i++)
+    {
+        char ch = exp[i];
+        if(ch == '(') s.push('(');
+        else if(ch == ')') s.pop(); //解析方式不可靠，可以后期换成栈解析
+        else if(s.empty()) //没有被括号内的运算符号
+        {
+            if(symbol.find(ch) != string::npos)
+            {
+                result = i;
+            }
+        }
+        
+    }
+    return result;
+    // return search_symbol(exp, symbol); //最多递归两次
+
+}
+
+NodePtr Calculator::build_tree(string& exp)
+{
+    auto pos = search_symbol(exp ,"+-");
     if(pos != string::npos)
     {
-        NodePtr root = nullptr;
-        if(str[pos] == '+')
-        {
-            root = make_shared<Type::BinaryNode>(Type::CalculateOp::Plus);
-        }
-        else 
-        {
-            root = make_shared<Type::BinaryNode>(Type::CalculateOp::Minus);
-        }
-        string left_str = str.substr(0, pos);
-        string right_str = str.substr(pos + 1);
-        root->setLeft(build_tree(left_str));
-        root->setRight(build_tree(right_str));
+        string left_exp, right_exp;
+        NodePtr root = split_exp(pos, exp, left_exp, right_exp);
 
+        root->setLeft(build_tree(left_exp));
+        root->setRight(build_tree(right_exp));
         return root;
     }
     
-    pos = str.find_last_of("/*");
+    pos = search_symbol(exp, "/*");
     if(pos != string::npos)
     {
-        NodePtr root = nullptr;
-        if(str[pos] == '*')
-        {
-            root = make_shared<Type::BinaryNode>(Type::CalculateOp::Multi);
-        }
-        else 
-        {
-            root = make_shared<Type::BinaryNode>(Type::CalculateOp::Devide);
-        }
-        string left_str = str.substr(0, pos);
-        string right_str = str.substr(pos + 1);
-        root->setLeft(build_tree(left_str));
-        root->setRight(build_tree(right_str));
+        string left_exp, right_exp;
+        NodePtr root = split_exp(pos, exp, left_exp, right_exp);
 
+        root->setLeft(build_tree(left_exp));
+        root->setRight(build_tree(right_exp));
         return root;
     }
 
-    str = trim(str);
-    if(str.empty())
+    // trim(exp);
+    if(exp.empty())
+    {
+        throw invalid_argument("warong expression");
+    }
+    if(exp[0] == '(')
+    {
+        if(exp[exp.size() -1 ] != ')')
+        {
+            throw invalid_argument("warong expression");
+        }
+        exp.erase(exp.size()-1, 1);
+        exp.erase(0, 1);
+    }
+    if(exp.empty())
     {
         throw invalid_argument("warong expression");
     }
 
-    pos = str.find(".");
+    pos = exp.find(".");
     if(pos != string::npos)
     {
-        double value = atof(str.c_str());
+        double value = atof(exp.c_str());
         RationalValue rv(static_cast<int>(value), value - static_cast<int>(value));
         return make_shared<Type::NumberNode>(rv);
     }
     else
     {
-        int value = atoi(str.c_str());
+        int value = atoi(exp.c_str());
         RationalValue rv(value);
         return  make_shared<Type::NumberNode>(value);
     }
-}
-
-void trim_test()
-{
-    std::cout << "trim test start ..." << endl;
-    string test_str = "  ";
-    assert(trim(test_str) == string(""));
-    test_str = " 3 4 ";
-    assert(trim(test_str) == string("3 4"));
-    test_str = "";
-    assert(trim(test_str) == test_str);
-    cout << "trim test all passed ... " << endl;
-
-}
-
-
-
-void build_test()
-{
-    cout << "build test ..." << endl;
-    // string exp1 = "2*3 + 4*3 - 10";
-    string exp1 = "2*3";
-    auto ptr = build_tree(exp1);
-    assert(ptr->calculate().getInteger() == 6);
-
-    string exp2 = "18/3*2";
-    ptr = build_tree(exp2);
-    // cout << exp2 << " = " << ptr->calculate() << endl;
-    assert(ptr->calculate().getInteger() == 12);
-
-    string exp3 = "6+3";
-    ptr = build_tree(exp3);
-    assert(ptr->calculate().getInteger() == 9);
-
-    string exp4 = "6-3";
-    // pre_process(exp4);
-    ptr = build_tree(exp4);
-    assert(ptr->calculate().getInteger() == 3);
-
-    string exp5 = "2*3 - 2 + 2/2";
-    // pre_process(exp5);
-    ptr = build_tree(exp5);
-    assert(ptr->calculate().getInteger() == 5);
-
-    string exp = "100 * 10 + 50 /2 -60+20/2";
-    // pre_process(exp);
-    ptr = build_tree(exp);
-    assert(ptr->calculate().getInteger() == 975);
-
-    exp = "100*10/2*5/4";
-    // pre_process(exp);
-    ptr = build_tree(exp);
-    assert(ptr->calculate().getInteger() == 625);
-
-
-    cout << "build test passed ..." << endl;
-    return;
-}
-
-
-// void mate_template_test()
-// {
-//     auto start_t = chrono::system_clock::now();
-//     int result = Fibonacci<45>::value;
-//     auto end_t = chrono::system_clock::now();
-
-//     std::cout << "Fibonacci(100) = " << result << "\t" 
-//         << "elapsed time: " << (chrono::duration_cast<chrono::milliseconds>(end_t - start_t)).count() 
-//         << "s" << std::endl;
-
-//     start_t = chrono::system_clock::now();
-//     result = fibonacci(45);
-//     end_t = chrono::system_clock::now();
-//     std::cout << "Fibonacci(100) = " << result << "\t" 
-//     << "elapsed time: " << (chrono::duration_cast<chrono::milliseconds>(end_t - start_t)).count() 
-//     << "s" << std::endl;
-// }
-
-int main()
-{
-    // mate_template_test();
-    build_test();
-    // trim_test();
-    testNode();
 }
